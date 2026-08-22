@@ -90,7 +90,7 @@ export const DiarioClasseView: React.FC = () => {
           </div>
           <h1 className="text-2xl font-black tracking-tight">Lançamento de Frequência & Avaliações</h1>
           <p className="text-xs text-amber-200/80 mt-1">
-            Lançamento de notas de Provas (Av1 e Av2) e Atividades com cálculo automático da média bimestral.
+            Lançamento de notas de Avaliações 1 e 2 e Atividades com cálculo automático da média bimestral.
           </p>
         </div>
 
@@ -191,31 +191,44 @@ export const DiarioClasseView: React.FC = () => {
       {/* Main Table */}
       <div className="glass-panel bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs table-fixed">
             <thead className="bg-slate-50 dark:bg-slate-800/40 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
               <tr>
-                <th className="p-4">Aluno</th>
-                <th className="p-4">Matrícula</th>
+                {/* 1ª Coluna: Aluno */}
+                <th className="p-4 w-1/4">Aluno</th>
+
+                {/* 2ª Coluna: Matrícula (Centralizada) */}
+                <th className="p-4 text-center w-36">Matrícula</th>
+
                 {activeTab === 'PRESENCA' ? (
                   <th className="p-4 text-center">Status Frequência ({dataChamada})</th>
                 ) : (
                   <>
-                    <th className="p-4 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-x border-amber-100 dark:border-amber-900/40">
-                      Avaliação 1 (Prova 1)
+                    {/* 3ª Coluna: Avaliação 1 (Centralizada, sem o texto "(Prova 1)") */}
+                    <th className="p-4 text-center w-36 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-x border-amber-100 dark:border-amber-900/40">
+                      Avaliação 1
                     </th>
-                    <th className="p-4 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-r border-amber-100 dark:border-amber-900/40">
-                      Avaliação 2 (Prova 2)
+
+                    {/* 4ª Coluna: Avaliação 2 (Centralizada, sem o texto "(Prova 2)") */}
+                    <th className="p-4 text-center w-36 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-r border-amber-100 dark:border-amber-900/40">
+                      Avaliação 2
                     </th>
-                    <th className="p-4 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-r border-amber-100 dark:border-amber-900/40">
+
+                    {/* 5ª Coluna: Atividades & Trabalhos (Centralizada) */}
+                    <th className="p-4 text-center w-44 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-r border-amber-100 dark:border-amber-900/40">
                       Atividades & Trabalhos
                     </th>
-                    <th className="p-4 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-black">
-                      <div className="flex items-center gap-1.5">
+
+                    {/* 6ª Coluna: Média Bimestral */}
+                    <th className="p-4 text-center w-44 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-black">
+                      <div className="flex items-center justify-center gap-1.5">
                         <Calculator className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span>Média {bimestre}º Bimestre (Automática)</span>
+                        <span>Média {bimestre}º Bimestre</span>
                       </div>
                     </th>
-                    <th className="p-4 text-center">Conceito Final</th>
+
+                    {/* 7ª Coluna: Conceito Final */}
+                    <th className="p-4 text-center w-36">Conceito Final</th>
                   </>
                 )}
               </tr>
@@ -239,18 +252,18 @@ export const DiarioClasseView: React.FC = () => {
                   return (
                     <tr key={aluno.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                       
-                      {/* Aluno Name & Photo */}
-                      <td className="p-4 flex items-center gap-3">
+                      {/* 1ª Coluna: Aluno Name & Photo */}
+                      <td className="p-4 flex items-center gap-3 truncate">
                         <img 
                           src={aluno.foto} 
                           alt={aluno.nome}
-                          className="w-8 h-8 rounded-full object-cover ring-2 ring-amber-500/20" 
+                          className="w-8 h-8 rounded-full object-cover ring-2 ring-amber-500/20 shrink-0" 
                         />
-                        <span className="font-bold text-slate-900 dark:text-white">{aluno.nome}</span>
+                        <span className="font-bold text-slate-900 dark:text-white truncate">{aluno.nome}</span>
                       </td>
 
-                      {/* Matricula */}
-                      <td className="p-4 font-mono font-semibold text-slate-500">
+                      {/* 2ª Coluna: Matricula (Centralizada) */}
+                      <td className="p-4 text-center font-mono font-semibold text-slate-500">
                         {aluno.matricula}
                       </td>
 
@@ -298,8 +311,8 @@ export const DiarioClasseView: React.FC = () => {
                         </td>
                       ) : (
                         <>
-                          {/* Coluna 1: Avaliação 1 */}
-                          <td className="p-4 bg-amber-50/20 dark:bg-amber-950/10 border-x border-amber-100/60 dark:border-amber-900/30">
+                          {/* 3ª Coluna: Avaliação 1 (Centralizada) */}
+                          <td className="p-4 text-center bg-amber-50/20 dark:bg-amber-950/10 border-x border-amber-100/60 dark:border-amber-900/30">
                             <input 
                               type="number" 
                               step="0.1"
@@ -310,12 +323,12 @@ export const DiarioClasseView: React.FC = () => {
                                 const val = parseFloat(e.target.value);
                                 setAv1State(prev => ({ ...prev, [aluno.id]: isNaN(val) ? 0 : val }));
                               }}
-                              className="w-20 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
+                              className="w-20 mx-auto px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
                             />
                           </td>
 
-                          {/* Coluna 2: Avaliação 2 */}
-                          <td className="p-4 bg-amber-50/20 dark:bg-amber-950/10 border-r border-amber-100/60 dark:border-amber-900/30">
+                          {/* 4ª Coluna: Avaliação 2 (Centralizada) */}
+                          <td className="p-4 text-center bg-amber-50/20 dark:bg-amber-950/10 border-r border-amber-100/60 dark:border-amber-900/30">
                             <input 
                               type="number" 
                               step="0.1"
@@ -326,12 +339,12 @@ export const DiarioClasseView: React.FC = () => {
                                 const val = parseFloat(e.target.value);
                                 setAv2State(prev => ({ ...prev, [aluno.id]: isNaN(val) ? 0 : val }));
                               }}
-                              className="w-20 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
+                              className="w-20 mx-auto px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
                             />
                           </td>
 
-                          {/* Coluna 3: Atividades & Trabalhos */}
-                          <td className="p-4 bg-amber-50/20 dark:bg-amber-950/10 border-r border-amber-100/60 dark:border-amber-900/30">
+                          {/* 5ª Coluna: Atividades & Trabalhos (Centralizada) */}
+                          <td className="p-4 text-center bg-amber-50/20 dark:bg-amber-950/10 border-r border-amber-100/60 dark:border-amber-900/30">
                             <input 
                               type="number" 
                               step="0.1"
@@ -342,18 +355,18 @@ export const DiarioClasseView: React.FC = () => {
                                 const val = parseFloat(e.target.value);
                                 setAtivState(prev => ({ ...prev, [aluno.id]: isNaN(val) ? 0 : val }));
                               }}
-                              className="w-20 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
+                              className="w-20 mx-auto px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
                             />
                           </td>
 
-                          {/* Coluna Calculada: Média Bimestral */}
-                          <td className="p-4 bg-indigo-50/40 dark:bg-indigo-950/30 font-black text-indigo-900 dark:text-indigo-200 text-sm">
-                            <span className="px-3 py-1.5 rounded-xl bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 font-black">
+                          {/* 6ª Coluna: Média Bimestral (Centralizada) */}
+                          <td className="p-4 text-center bg-indigo-50/40 dark:bg-indigo-950/30 font-black text-indigo-900 dark:text-indigo-200 text-sm">
+                            <span className="inline-block px-3 py-1.5 rounded-xl bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 font-black">
                               {mediaCalculada.toFixed(1)}
                             </span>
                           </td>
 
-                          {/* Conceito Final */}
+                          {/* 7ª Coluna: Conceito Final */}
                           <td className="p-4 text-center font-bold">
                             <span className={`px-2.5 py-1 rounded-full text-[10px] uppercase font-extrabold ${
                               mediaCalculada >= 7.0 

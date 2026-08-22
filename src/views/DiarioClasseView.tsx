@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { BookOpenCheck, CheckCircle2, XCircle, AlertCircle, Save, Calendar, Award } from 'lucide-react';
+import { BookOpenCheck, CheckCircle2, XCircle, AlertCircle, Save, Calendar, Award, Calculator } from 'lucide-react';
 
 export const DiarioClasseView: React.FC = () => {
-  const { turmas, disciplinas, alunos, presencas, notas, salvarPresencaLote, salvarNotasLote } = useApp();
+  const { turmas, disciplinas, alunos, presencas, salvarPresencaLote, salvarNotasLote } = useApp();
 
   const [selectedTurmaId, setSelectedTurmaId] = useState(turmas[0]?.id || '');
   const [selectedDisciplinaId, setSelectedDisciplinaId] = useState(disciplinas[0]?.id || '');
-  const [activeTab, setActiveTab] = useState<'PRESENCA' | 'NOTAS'>('PRESENCA');
+  const [activeTab, setActiveTab] = useState<'PRESENCA' | 'NOTAS'>('NOTAS');
 
   // Dates & Bimestres
   const [dataChamada, setDataChamada] = useState(new Date().toISOString().split('T')[0]);
@@ -26,15 +26,36 @@ export const DiarioClasseView: React.FC = () => {
     return initial;
   });
 
-  // Local Grades State for batch editing
-  const [notaState, setNotaState] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
-    alunosDaTurma.forEach(a => {
-      const ex = notas.find(n => n.turmaId === selectedTurmaId && n.alunoId === a.id && n.bimestre === bimestre);
-      initial[a.id] = ex ? ex.nota : 8.0;
-    });
-    return initial;
-  });
+  // Partial Evaluation Grades States (Av1, Av2, Atividades/Trabalhos)
+  const [av1State, setAv1State] = useState<Record<string, number>>(() => ({
+    'aluno-1': 8.5,
+    'aluno-2': 6.5,
+    'aluno-3': 9.5,
+    'aluno-4': 7.0
+  }));
+
+  const [av2State, setAv2State] = useState<Record<string, number>>(() => ({
+    'aluno-1': 8.0,
+    'aluno-2': 7.0,
+    'aluno-3': 10.0,
+    'aluno-4': 8.0
+  }));
+
+  const [ativState, setAtivState] = useState<Record<string, number>>(() => ({
+    'aluno-1': 9.0,
+    'aluno-2': 7.5,
+    'aluno-3': 10.0,
+    'aluno-4': 9.0
+  }));
+
+  // Helper to compute Bimestre Average dynamically
+  const calcularMedia = (alunoId: string) => {
+    const n1 = av1State[alunoId] ?? 8.0;
+    const n2 = av2State[alunoId] ?? 8.0;
+    const n3 = ativState[alunoId] ?? 8.0;
+    const media = (n1 + n2 + n3) / 3;
+    return Number(media.toFixed(1));
+  };
 
   const handleTogglePresenca = (alunoId: string, status: 'PRESENTE' | 'AUSENTE' | 'JUSTIFICADO') => {
     setPresencaState(prev => ({ ...prev, [alunoId]: status }));
@@ -51,7 +72,7 @@ export const DiarioClasseView: React.FC = () => {
   const handleSalvarNotas = () => {
     const payload = alunosDaTurma.map(a => ({
       alunoId: a.id,
-      nota: Number(notaState[a.id] || 0),
+      nota: calcularMedia(a.id),
       faltasTotais: 0
     }));
     salvarNotasLote(selectedTurmaId, selectedDisciplinaId, bimestre, payload);
@@ -61,15 +82,15 @@ export const DiarioClasseView: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 glass-panel bg-gradient-to-r from-amber-900 via-orange-900 to-slate-900 text-white rounded-2xl shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 glass-panel bg-gradient-to-r from-amber-950 via-orange-950 to-slate-900 text-white rounded-2xl shadow-xl">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-200 text-xs font-semibold mb-2">
             <BookOpenCheck className="w-3.5 h-3.5 text-amber-400" />
             <span>Módulo Diário de Classe Digital</span>
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Lançamento de Frequência & Notas</h1>
+          <h1 className="text-2xl font-black tracking-tight">Lançamento de Frequência & Avaliações</h1>
           <p className="text-xs text-amber-200/80 mt-1">
-            Interface rápida para professores registrarem presença diária e boletim escolar.
+            Lançamento de notas de Provas (Av1 e Av2) e Atividades com cálculo automático da média bimestral.
           </p>
         </div>
 
@@ -98,20 +119,8 @@ export const DiarioClasseView: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-3">
         <div className="flex gap-3">
-          <button
-            onClick={() => setActiveTab('PRESENCA')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === 'PRESENCA'
-                ? 'bg-amber-500 text-white shadow-md'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            <span>Frequência Diária</span>
-          </button>
-
           <button
             onClick={() => setActiveTab('NOTAS')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
@@ -122,6 +131,18 @@ export const DiarioClasseView: React.FC = () => {
           >
             <Award className="w-4 h-4" />
             <span>Lançamento de Notas / Avaliações</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('PRESENCA')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'PRESENCA'
+                ? 'bg-amber-500 text-white shadow-md'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>Frequência Diária</span>
           </button>
         </div>
 
@@ -179,109 +200,178 @@ export const DiarioClasseView: React.FC = () => {
                   <th className="p-4 text-center">Status Frequência ({dataChamada})</th>
                 ) : (
                   <>
-                    <th className="p-4">Nota ({bimestre}º Bimestre)</th>
-                    <th className="p-4">Conceito</th>
+                    <th className="p-4 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-x border-amber-100 dark:border-amber-900/40">
+                      Avaliação 1 (Prova 1)
+                    </th>
+                    <th className="p-4 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-r border-amber-100 dark:border-amber-900/40">
+                      Avaliação 2 (Prova 2)
+                    </th>
+                    <th className="p-4 bg-amber-50/50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 border-r border-amber-100 dark:border-amber-900/40">
+                      Atividades & Trabalhos
+                    </th>
+                    <th className="p-4 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 font-black">
+                      <div className="flex items-center gap-1.5">
+                        <Calculator className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <span>Média {bimestre}º Bimestre (Automática)</span>
+                      </div>
+                    </th>
+                    <th className="p-4 text-center">Conceito Final</th>
                   </>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-              {alunosDaTurma.map((aluno) => {
-                const currentPresenca = presencaState[aluno.id] || 'PRESENTE';
-                const currentNota = notaState[aluno.id] !== undefined ? notaState[aluno.id] : 8.0;
+              {alunosDaTurma.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-slate-400">
+                    Nenhum aluno matriculado nesta turma.
+                  </td>
+                </tr>
+              ) : (
+                alunosDaTurma.map((aluno) => {
+                  const currentPresenca = presencaState[aluno.id] || 'PRESENTE';
 
-                return (
-                  <tr key={aluno.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                    
-                    <td className="p-4 flex items-center gap-3">
-                      <img 
-                        src={aluno.foto} 
-                        alt={aluno.nome}
-                        className="w-8 h-8 rounded-full object-cover ring-2 ring-amber-500/20" 
-                      />
-                      <span className="font-bold text-slate-900 dark:text-white">{aluno.nome}</span>
-                    </td>
+                  const n1 = av1State[aluno.id] !== undefined ? av1State[aluno.id] : 8.0;
+                  const n2 = av2State[aluno.id] !== undefined ? av2State[aluno.id] : 8.0;
+                  const n3 = ativState[aluno.id] !== undefined ? ativState[aluno.id] : 8.0;
+                  const mediaCalculada = calcularMedia(aluno.id);
 
-                    <td className="p-4 font-mono font-semibold text-slate-500">
-                      {aluno.matricula}
-                    </td>
-
-                    {activeTab === 'PRESENCA' ? (
-                      <td className="p-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          
-                          <button
-                            onClick={() => handleTogglePresenca(aluno.id, 'PRESENTE')}
-                            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
-                              currentPresenca === 'PRESENTE'
-                                ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/40'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                            }`}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Presente</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleTogglePresenca(aluno.id, 'AUSENTE')}
-                            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
-                              currentPresenca === 'AUSENTE'
-                                ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500/40'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                            }`}
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Ausente</span>
-                          </button>
-
-                          <button
-                            onClick={() => handleTogglePresenca(aluno.id, 'JUSTIFICADO')}
-                            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
-                              currentPresenca === 'JUSTIFICADO'
-                                ? 'bg-amber-500 text-white shadow-sm'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                            }`}
-                          >
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            <span>Justificado</span>
-                          </button>
-
-                        </div>
+                  return (
+                    <tr key={aluno.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      
+                      {/* Aluno Name & Photo */}
+                      <td className="p-4 flex items-center gap-3">
+                        <img 
+                          src={aluno.foto} 
+                          alt={aluno.nome}
+                          className="w-8 h-8 rounded-full object-cover ring-2 ring-amber-500/20" 
+                        />
+                        <span className="font-bold text-slate-900 dark:text-white">{aluno.nome}</span>
                       </td>
-                    ) : (
-                      <>
-                        <td className="p-4">
-                          <input 
-                            type="number" 
-                            step="0.1"
-                            min="0"
-                            max="10"
-                            value={currentNota}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              setNotaState(prev => ({ ...prev, [aluno.id]: val }));
-                            }}
-                            className="w-24 px-3 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white"
-                          />
-                        </td>
 
-                        <td className="p-4 font-bold">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] ${
-                            currentNota >= 7.0 
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : currentNota >= 5.0
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                          }`}>
-                            {currentNota >= 7.0 ? 'Aprovado' : currentNota >= 5.0 ? 'Recuperação' : 'Insuficiente'}
-                          </span>
-                        </td>
-                      </>
-                    )}
+                      {/* Matricula */}
+                      <td className="p-4 font-mono font-semibold text-slate-500">
+                        {aluno.matricula}
+                      </td>
 
-                  </tr>
-                );
-              })}
+                      {activeTab === 'PRESENCA' ? (
+                        <td className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            
+                            <button
+                              onClick={() => handleTogglePresenca(aluno.id, 'PRESENTE')}
+                              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
+                                currentPresenca === 'PRESENTE'
+                                  ? 'bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500/40'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                              }`}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Presente</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleTogglePresenca(aluno.id, 'AUSENTE')}
+                              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
+                                currentPresenca === 'AUSENTE'
+                                  ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-500/40'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                              }`}
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Ausente</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleTogglePresenca(aluno.id, 'JUSTIFICADO')}
+                              className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
+                                currentPresenca === 'JUSTIFICADO'
+                                  ? 'bg-amber-500 text-white shadow-sm'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                              }`}
+                            >
+                              <AlertCircle className="w-3.5 h-3.5" />
+                              <span>Justificado</span>
+                            </button>
+
+                          </div>
+                        </td>
+                      ) : (
+                        <>
+                          {/* Coluna 1: Avaliação 1 */}
+                          <td className="p-4 bg-amber-50/20 dark:bg-amber-950/10 border-x border-amber-100/60 dark:border-amber-900/30">
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="10"
+                              value={n1}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                setAv1State(prev => ({ ...prev, [aluno.id]: isNaN(val) ? 0 : val }));
+                              }}
+                              className="w-20 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
+                            />
+                          </td>
+
+                          {/* Coluna 2: Avaliação 2 */}
+                          <td className="p-4 bg-amber-50/20 dark:bg-amber-950/10 border-r border-amber-100/60 dark:border-amber-900/30">
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="10"
+                              value={n2}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                setAv2State(prev => ({ ...prev, [aluno.id]: isNaN(val) ? 0 : val }));
+                              }}
+                              className="w-20 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
+                            />
+                          </td>
+
+                          {/* Coluna 3: Atividades & Trabalhos */}
+                          <td className="p-4 bg-amber-50/20 dark:bg-amber-950/10 border-r border-amber-100/60 dark:border-amber-900/30">
+                            <input 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="10"
+                              value={n3}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                setAtivState(prev => ({ ...prev, [aluno.id]: isNaN(val) ? 0 : val }));
+                              }}
+                              className="w-20 px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-center focus:ring-2 focus:ring-amber-500"
+                            />
+                          </td>
+
+                          {/* Coluna Calculada: Média Bimestral */}
+                          <td className="p-4 bg-indigo-50/40 dark:bg-indigo-950/30 font-black text-indigo-900 dark:text-indigo-200 text-sm">
+                            <span className="px-3 py-1.5 rounded-xl bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800 font-black">
+                              {mediaCalculada.toFixed(1)}
+                            </span>
+                          </td>
+
+                          {/* Conceito Final */}
+                          <td className="p-4 text-center font-bold">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] uppercase font-extrabold ${
+                              mediaCalculada >= 7.0 
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : mediaCalculada >= 5.0
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                            }`}>
+                              {mediaCalculada >= 7.0 ? '🟢 Aprovado' : mediaCalculada >= 5.0 ? '🟡 Recuperação' : '🔴 Insuficiente'}
+                            </span>
+                          </td>
+                        </>
+                      )}
+
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

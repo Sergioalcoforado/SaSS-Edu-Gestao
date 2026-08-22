@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import type { Tenant, StatusTenant, PlanoTenant } from '../types';
+import { PlanConfig } from '../config/plans';
 import { 
   Globe, Building2, Users, ShieldCheck, Plus, Search, 
-  Edit3, Phone, Mail, X, Sparkles 
+  Edit3, Phone, Mail, X, Sparkles, CheckCircle2, AlertCircle, Layers 
 } from 'lucide-react';
 
 export const SuperAdminView: React.FC = () => {
@@ -16,8 +17,9 @@ export const SuperAdminView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('TODOS');
   
-  // Edit modal state
+  // Modals state
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [showPlansModal, setShowPlansModal] = useState<boolean>(false);
 
   // Form states for Create/Edit
   const [nome, setNome] = useState('');
@@ -81,7 +83,7 @@ export const SuperAdminView: React.FC = () => {
     e.preventDefault();
     if (!nome || !cnpj) return;
 
-    const valorPlano = plano === 'BASIC' ? 490 : plano === 'PRO' ? 990 : 1990;
+    const planSpec = PlanConfig.getPlan(plano);
 
     adicionarEscola({
       nome,
@@ -93,8 +95,8 @@ export const SuperAdminView: React.FC = () => {
       corPrimaria,
       emailContato: emailContato || `contato@${subdominio}`,
       telefoneContato: telefoneContato || '(11) 98888-0000',
-      limiteAlunos,
-      valorMensalidadePlano: valorPlano
+      limiteAlunos: limiteAlunos || planSpec.limiteAlunos,
+      valorMensalidadePlano: planSpec.precoMensal
     });
 
     setShowModalCadastroEscola(false);
@@ -104,7 +106,7 @@ export const SuperAdminView: React.FC = () => {
     e.preventDefault();
     if (!editingTenant) return;
 
-    const valorPlano = plano === 'BASIC' ? 490 : plano === 'PRO' ? 990 : 1990;
+    const planSpec = PlanConfig.getPlan(plano);
 
     atualizarEscola(editingTenant.id, {
       nome,
@@ -114,10 +116,10 @@ export const SuperAdminView: React.FC = () => {
       status,
       emailContato,
       telefoneContato,
-      limiteAlunos,
+      limiteAlunos: limiteAlunos || planSpec.limiteAlunos,
       logo,
       corPrimaria,
-      valorMensalidadePlano: valorPlano
+      valorMensalidadePlano: planSpec.precoMensal
     });
 
     setEditingTenant(null);
@@ -139,13 +141,23 @@ export const SuperAdminView: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={abrirModalCadastro}
-          className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Cadastrar Nova Escola</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setShowPlansModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-xs rounded-xl shadow-md transition-all"
+          >
+            <Layers className="w-4 h-4 text-purple-400" />
+            <span>Ver Especificação dos Planos</span>
+          </button>
+
+          <button
+            onClick={abrirModalCadastro}
+            className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Cadastrar Nova Escola</span>
+          </button>
+        </div>
       </div>
 
       {/* Metric Cards Grid */}
@@ -277,6 +289,7 @@ export const SuperAdminView: React.FC = () => {
                   const isAtivo = tenant.status === 'ATIVO';
                   const isSuspenso = tenant.status === 'SUSPENSO';
                   const pctAlunos = tenant.limiteAlunos ? Math.round((tenant.alunosCount / tenant.limiteAlunos) * 100) : 50;
+                  const planSpec = PlanConfig.getPlan(tenant.plano);
 
                   return (
                     <tr key={tenant.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
@@ -304,13 +317,7 @@ export const SuperAdminView: React.FC = () => {
 
                       {/* Plan */}
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase ${
-                          tenant.plano === 'ENTERPRISE'
-                            ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200'
-                            : tenant.plano === 'PRO'
-                            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200'
-                            : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
-                        }`}>
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase ${planSpec.badgeColor}`}>
                           {tenant.plano} • R${tenant.valorMensalidadePlano}/mês
                         </span>
                       </td>
@@ -400,6 +407,75 @@ export const SuperAdminView: React.FC = () => {
 
       </div>
 
+      {/* Modal Especificação dos Planos SaaS */}
+      {showPlansModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-4xl glass-panel bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-purple-600" />
+                  <span>Especificações & Matriz de Recursos dos Planos SaaS</span>
+                </h3>
+                <p className="text-xs text-slate-400">Detalhamento técnico das diferenças entre os planos BASIC, PRO e ENTERPRISE.</p>
+              </div>
+              <button onClick={() => setShowPlansModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Plan Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Object.values(PlanConfig.PLANS).map((plan) => (
+                <div key={plan.id} className="p-5 bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4">
+                  <div>
+                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase ${plan.badgeColor}`}>
+                      {plan.id}
+                    </span>
+                    <h4 className="text-xl font-black text-slate-900 dark:text-white mt-2">{plan.nome}</h4>
+                    <p className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">
+                      R$ {plan.precoMensal}<span className="text-xs text-slate-400 font-normal">/mês</span>
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">{plan.descricao}</p>
+
+                    {/* Resources */}
+                    <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2 text-xs">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Recursos Incluídos:</span>
+                      {plan.recursos.map((rec, i) => (
+                        <p key={i} className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                          <span>{rec}</span>
+                        </p>
+                      ))}
+
+                      {plan.recursosBloqueados && plan.recursosBloqueados.map((rec, i) => (
+                        <p key={i} className="flex items-start gap-2 text-slate-400 line-through opacity-60">
+                          <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                          <span>{rec}</span>
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] font-bold text-slate-500">
+                    Limite: <span className="text-purple-600 dark:text-purple-400">{plan.limiteAlunos} Alunos</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-3">
+              <button
+                onClick={() => setShowPlansModal(false)}
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs"
+              >
+                Fechar Matriz de Planos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Cadastro de Nova Escola */}
       {showModalCadastroEscola && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
@@ -459,7 +535,11 @@ export const SuperAdminView: React.FC = () => {
                   <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Plano de Assinatura</label>
                   <select
                     value={plano}
-                    onChange={(e) => setPlano(e.target.value as PlanoTenant)}
+                    onChange={(e) => {
+                      const newPlan = e.target.value as PlanoTenant;
+                      setPlano(newPlan);
+                      setLimiteAlunos(PlanConfig.getPlan(newPlan).limiteAlunos);
+                    }}
                     className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 font-bold"
                   >
                     <option value="BASIC">Plano BASIC (R$ 490/mês - até 250 alunos)</option>
@@ -605,7 +685,11 @@ export const SuperAdminView: React.FC = () => {
                   <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Plano de Assinatura</label>
                   <select
                     value={plano}
-                    onChange={(e) => setPlano(e.target.value as PlanoTenant)}
+                    onChange={(e) => {
+                      const newPlan = e.target.value as PlanoTenant;
+                      setPlano(newPlan);
+                      setLimiteAlunos(PlanConfig.getPlan(newPlan).limiteAlunos);
+                    }}
                     className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 font-bold"
                   >
                     <option value="BASIC">Plano BASIC (R$ 490/mês)</option>

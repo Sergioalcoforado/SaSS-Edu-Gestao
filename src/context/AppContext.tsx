@@ -184,12 +184,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // SuperAdmin School CRUD Actions
   const adicionarEscola = async (escolaData: Omit<Tenant, 'id' | 'alunosCount' | 'mensalidadesTotal' | 'dataCriacao'>) => {
-    const novoId = `tenant-${Date.now()}`;
+    const tempId = `tenant-${Date.now()}`;
     const dataCriacao = new Date().toISOString().split('T')[0];
 
     const novaEscola: Tenant = {
       ...escolaData,
-      id: novoId,
+      id: tempId,
       alunosCount: 0,
       mensalidadesTotal: 0,
       dataCriacao
@@ -197,8 +197,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setTenantsList(prev => [novaEscola, ...prev]);
     addNotification('Nova Escola Cadastrada', `Instituição "${novaEscola.nome}" cadastrada com sucesso com plano ${novaEscola.plano}!`, 'SUCESSO');
-    await DbService.createTenant(novaEscola);
+    
+    const createdRemote = await DbService.createTenant(novaEscola);
+    if (createdRemote && createdRemote.id !== tempId) {
+      setTenantsList(prev => prev.map(t => t.id === tempId ? createdRemote : t));
+    }
   };
+
 
   const atualizarEscola = async (id: string, dadosAtualizados: Partial<Tenant>) => {
     setTenantsList(prev => prev.map(t => {

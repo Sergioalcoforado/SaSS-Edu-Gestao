@@ -25,8 +25,15 @@ export class DbService {
     if (!this.isSupabaseConfigured()) return INITIAL_TENANTS;
     try {
       const { data, error } = await supabase.from('tenants').select('*');
-      if (error || !data || data.length === 0) return INITIAL_TENANTS;
-      return data.map((t) => ({
+      if (error) {
+        console.error('Erro ao buscar tenants no Supabase:', error);
+        return INITIAL_TENANTS;
+      }
+      if (!data || data.length === 0) {
+        return INITIAL_TENANTS;
+      }
+
+      const fetched: Tenant[] = data.map((t) => ({
         id: t.id,
         nome: t.nome,
         cnpj: t.cnpj,
@@ -43,33 +50,69 @@ export class DbService {
         limiteAlunos: t.limite_alunos || 600,
         valorMensalidadePlano: Number(t.valor_mensalidade_plano || 990)
       }));
-    } catch {
+
+      // Garantir que tenants iniciais não sejam duplicados se já existirem no banco
+      const existingIds = new Set(fetched.map(f => f.id));
+      const missingInitial = INITIAL_TENANTS.filter(init => !existingIds.has(init.id));
+      return [...fetched, ...missingInitial];
+    } catch (err) {
+      console.error('Exceção ao buscar tenants:', err);
       return INITIAL_TENANTS;
     }
   }
 
-  static async createTenant(tenant: Tenant): Promise<boolean> {
-    if (!this.isSupabaseConfigured()) return true;
+  static async createTenant(tenant: Tenant): Promise<Tenant | null> {
+    if (!this.isSupabaseConfigured()) return tenant;
     try {
-      const { error } = await supabase.from('tenants').insert({
-        id: tenant.id.includes('tenant-') ? undefined : tenant.id,
+      const payload: Record<string, any> = {
         nome: tenant.nome,
         cnpj: tenant.cnpj,
         subdominio: tenant.subdominio,
-        logo: tenant.logo,
+        logo: tenant.logo || null,
         plano: tenant.plano,
         status: tenant.status,
-        alunos_count: tenant.alunosCount,
-        mensalidades_total: tenant.mensalidadesTotal,
-        cor_primaria: tenant.corPrimaria,
-        email_contato: tenant.emailContato,
-        telefone_contato: tenant.telefoneContato,
-        limite_alunos: tenant.limiteAlunos,
-        valor_mensalidade_plano: tenant.valorMensalidadePlano
-      });
-      return !error;
-    } catch {
-      return false;
+        alunos_count: tenant.alunosCount || 0,
+        mensalidades_total: tenant.mensalidadesTotal || 0,
+        cor_primaria: tenant.corPrimaria || '#4F46E5',
+        email_contato: tenant.emailContato || null,
+        telefone_contato: tenant.telefoneContato || null,
+        limite_alunos: tenant.limiteAlunos || 600,
+        valor_mensalidade_plano: tenant.valorMensalidadePlano || 990
+      };
+
+      // Se for um UUID válido, incluir
+      if (tenant.id && !tenant.id.includes('tenant-')) {
+        payload.id = tenant.id;
+      }
+
+      const { data, error } = await supabase.from('tenants').insert(payload).select().single();
+      if (error) {
+        console.error('Erro ao inserir tenant no Supabase:', error);
+        return null;
+      }
+      if (data) {
+        return {
+          id: data.id,
+          nome: data.nome,
+          cnpj: data.cnpj,
+          subdominio: data.subdominio,
+          logo: data.logo || '',
+          plano: data.plano,
+          status: data.status,
+          alunosCount: data.alunos_count || 0,
+          mensalidadesTotal: Number(data.mensalidades_total || 0),
+          corPrimaria: data.cor_primaria || '#4F46E5',
+          emailContato: data.email_contato || '',
+          telefoneContato: data.telefone_contato || '',
+          dataCriacao: data.data_criacao || new Date().toISOString().split('T')[0],
+          limiteAlunos: data.limite_alunos || 600,
+          valorMensalidadePlano: Number(data.valor_mensalidade_plano || 990)
+        };
+      }
+      return tenant;
+    } catch (err) {
+      console.error('Exceção ao criar tenant:', err);
+      return null;
     }
   }
 
@@ -84,8 +127,10 @@ export class DbService {
       if (updates.mensalidadesTotal !== undefined) payload.mensalidades_total = updates.mensalidadesTotal;
 
       const { error } = await supabase.from('tenants').update(payload).eq('id', id);
+      if (error) console.error('Erro ao atualizar tenant no Supabase:', error);
       return !error;
-    } catch {
+    } catch (err) {
+      console.error('Exceção ao atualizar tenant:', err);
       return false;
     }
   }
@@ -363,7 +408,6 @@ export class DbService {
   ): Promise<boolean> {
     if (!this.isSupabaseConfigured()) return true;
     try {
-      // Validar UUIDs
       const validTurmaId = turmaId.includes('turma-') ? null : turmaId;
       const validDisciplinaId = disciplinaId.includes('disc-') ? null : disciplinaId;
       if (!validTurmaId || !validDisciplinaId) return true;

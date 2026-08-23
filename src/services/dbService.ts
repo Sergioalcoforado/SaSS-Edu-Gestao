@@ -20,7 +20,7 @@ export class DbService {
     return Boolean(url && url.includes('supabase.co'));
   }
 
-  // TENANTS
+  // TENANTS READ & WRITE
   static async getTenants(): Promise<Tenant[]> {
     if (!this.isSupabaseConfigured()) return INITIAL_TENANTS;
     try {
@@ -34,21 +34,63 @@ export class DbService {
         logo: t.logo || '',
         plano: t.plano,
         status: t.status,
-        alunosCount: t.alunos_count,
-        mensalidadesTotal: Number(t.mensalidades_total),
-        corPrimaria: t.cor_primaria,
-        emailContato: t.email_contato,
-        telefoneContato: t.telefone_contato,
-        dataCriacao: t.data_criacao,
-        limiteAlunos: t.limite_alunos,
-        valorMensalidadePlano: Number(t.valor_mensalidade_plano)
+        alunosCount: t.alunos_count || 0,
+        mensalidadesTotal: Number(t.mensalidades_total || 0),
+        corPrimaria: t.cor_primaria || '#4F46E5',
+        emailContato: t.email_contato || '',
+        telefoneContato: t.telefone_contato || '',
+        dataCriacao: t.data_criacao || new Date().toISOString().split('T')[0],
+        limiteAlunos: t.limite_alunos || 600,
+        valorMensalidadePlano: Number(t.valor_mensalidade_plano || 990)
       }));
     } catch {
       return INITIAL_TENANTS;
     }
   }
 
-  // USERS
+  static async createTenant(tenant: Tenant): Promise<boolean> {
+    if (!this.isSupabaseConfigured()) return true;
+    try {
+      const { error } = await supabase.from('tenants').insert({
+        id: tenant.id.includes('tenant-') ? undefined : tenant.id,
+        nome: tenant.nome,
+        cnpj: tenant.cnpj,
+        subdominio: tenant.subdominio,
+        logo: tenant.logo,
+        plano: tenant.plano,
+        status: tenant.status,
+        alunos_count: tenant.alunosCount,
+        mensalidades_total: tenant.mensalidadesTotal,
+        cor_primaria: tenant.corPrimaria,
+        email_contato: tenant.emailContato,
+        telefone_contato: tenant.telefoneContato,
+        limite_alunos: tenant.limiteAlunos,
+        valor_mensalidade_plano: tenant.valorMensalidadePlano
+      });
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
+  static async updateTenant(id: string, updates: Partial<Tenant>): Promise<boolean> {
+    if (!this.isSupabaseConfigured()) return true;
+    try {
+      const payload: Record<string, any> = {};
+      if (updates.nome) payload.nome = updates.nome;
+      if (updates.status) payload.status = updates.status;
+      if (updates.plano) payload.plano = updates.plano;
+      if (updates.alunosCount !== undefined) payload.alunos_count = updates.alunosCount;
+      if (updates.mensalidadesTotal !== undefined) payload.mensalidades_total = updates.mensalidadesTotal;
+
+      const { error } = await supabase.from('tenants').update(payload).eq('id', id);
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
+  // USERS READ
   static async getUsers(tenantId?: string): Promise<User[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_USERS.filter(u => u.tenantId === tenantId) : INITIAL_USERS;
@@ -78,7 +120,7 @@ export class DbService {
     }
   }
 
-  // ALUNOS
+  // ALUNOS READ & WRITE
   static async getAlunos(tenantId?: string): Promise<Aluno[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_ALUNOS.filter(a => a.tenantId === tenantId) : INITIAL_ALUNOS;
@@ -112,7 +154,31 @@ export class DbService {
     }
   }
 
-  // TURMAS
+  static async createAluno(aluno: Aluno): Promise<boolean> {
+    if (!this.isSupabaseConfigured()) return true;
+    try {
+      const { error } = await supabase.from('alunos').insert({
+        id: aluno.id.includes('aluno-') ? undefined : aluno.id,
+        tenant_id: aluno.tenantId,
+        nome: aluno.nome,
+        matricula: aluno.matricula,
+        cpf: aluno.cpf,
+        data_nascimento: aluno.dataNascimento || null,
+        turma_id: aluno.turmaId.includes('turma-') ? null : aluno.turmaId,
+        turma_nome: aluno.turmaNome,
+        responsavel_nome: aluno.responsavelNome,
+        responsavel_telefone: aluno.responsavelTelefone,
+        responsavel_email: aluno.responsavelEmail,
+        status: aluno.status,
+        foto: aluno.foto
+      });
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
+  // TURMAS READ & WRITE
   static async getTurmas(tenantId?: string): Promise<Turma[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_TURMAS.filter(t => t.tenantId === tenantId) : INITIAL_TURMAS;
@@ -132,7 +198,7 @@ export class DbService {
         turno: t.turno,
         nivel: t.nivel,
         capacidade: t.capacidade,
-        alunosMatriculados: t.alunos_matriculados,
+        alunosMatriculados: t.alunos_matriculados || 0,
         professorTitularId: t.professor_titular_id || '',
         professorTitularNome: t.professor_titular_nome || ''
       }));
@@ -141,7 +207,25 @@ export class DbService {
     }
   }
 
-  // DISCIPLINAS
+  static async createTurma(turma: Turma): Promise<boolean> {
+    if (!this.isSupabaseConfigured()) return true;
+    try {
+      const { error } = await supabase.from('turmas').insert({
+        tenant_id: turma.tenantId,
+        nome: turma.nome,
+        ano_letivo: turma.anoLetivo,
+        turno: turma.turno,
+        nivel: turma.nivel,
+        capacidade: turma.capacidade,
+        alunos_matriculados: turma.alunosMatriculados
+      });
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
+  // DISCIPLINAS READ & WRITE
   static async getDisciplinas(tenantId?: string): Promise<Disciplina[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_DISCIPLINAS.filter(d => d.tenantId === tenantId) : INITIAL_DISCIPLINAS;
@@ -167,7 +251,7 @@ export class DbService {
     }
   }
 
-  // COBRANCAS
+  // COBRANCAS READ & MUTATE
   static async getCobrancas(tenantId?: string): Promise<Cobranca[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_COBRANCAS.filter(c => c.tenantId === tenantId) : INITIAL_COBRANCAS;
@@ -204,7 +288,20 @@ export class DbService {
     }
   }
 
-  // REGRAS DE COBRANCA
+  static async updateCobrancaStatus(id: string, status: 'PAGO' | 'PENDENTE' | 'ATRASADO', dataPagamento?: string): Promise<boolean> {
+    if (!this.isSupabaseConfigured()) return true;
+    try {
+      const { error } = await supabase.from('cobrancas').update({
+        status,
+        data_pagamento: dataPagamento || new Date().toISOString()
+      }).eq('id', id);
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
+  // REGRAS DE COBRANCA READ
   static async getRegrasCobranca(tenantId?: string): Promise<RegraCobranca[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_REGRAS_COBRANCA.filter(r => r.tenantId === tenantId) : INITIAL_REGRAS_COBRANCA;
@@ -230,7 +327,7 @@ export class DbService {
     }
   }
 
-  // NOTAS
+  // NOTAS READ & WRITE
   static async getNotas(tenantId?: string): Promise<NotaRegistro[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_NOTAS.filter(n => n.tenantId === tenantId) : INITIAL_NOTAS;
@@ -250,14 +347,45 @@ export class DbService {
         alunoId: n.aluno_id,
         bimestre: n.bimestre,
         nota: Number(n.nota),
-        faltasTotais: n.faltas_totais
+        faltasTotais: n.faltas_totais || 0
       }));
     } catch {
       return tenantId ? INITIAL_NOTAS.filter(n => n.tenantId === tenantId) : INITIAL_NOTAS;
     }
   }
 
-  // PRESENCAS
+  static async saveNotasBatch(
+    tenantId: string,
+    turmaId: string,
+    disciplinaId: string,
+    bimestre: number,
+    registros: { alunoId: string; nota: number; faltasTotais: number }[]
+  ): Promise<boolean> {
+    if (!this.isSupabaseConfigured()) return true;
+    try {
+      // Validar UUIDs
+      const validTurmaId = turmaId.includes('turma-') ? null : turmaId;
+      const validDisciplinaId = disciplinaId.includes('disc-') ? null : disciplinaId;
+      if (!validTurmaId || !validDisciplinaId) return true;
+
+      const payload = registros.map(r => ({
+        tenant_id: tenantId,
+        turma_id: validTurmaId,
+        disciplina_id: validDisciplinaId,
+        aluno_id: r.alunoId,
+        bimestre,
+        nota: r.nota,
+        faltas_totais: r.faltasTotais
+      }));
+
+      const { error } = await supabase.from('notas').upsert(payload, { onConflict: 'tenant_id,turma_id,disciplina_id,aluno_id,bimestre' });
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
+  // PRESENCAS READ
   static async getPresencas(tenantId?: string): Promise<PresencaRegistro[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_PRESENCAS.filter(p => p.tenantId === tenantId) : INITIAL_PRESENCAS;
@@ -284,7 +412,7 @@ export class DbService {
     }
   }
 
-  // COMUNICADOS
+  // COMUNICADOS READ & WRITE
   static async getComunicados(tenantId?: string): Promise<Comunicado[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_COMUNICADOS.filter(c => c.tenantId === tenantId) : INITIAL_COMUNICADOS;
@@ -306,14 +434,32 @@ export class DbService {
         autorCargo: c.autor_cargo,
         destinatarioRole: c.destinatario_role,
         urgente: c.urgente,
-        lidoPorCount: c.lido_por_count
+        lidoPorCount: c.lido_por_count || 0
       }));
     } catch {
       return tenantId ? INITIAL_COMUNICADOS.filter(c => c.tenantId === tenantId) : INITIAL_COMUNICADOS;
     }
   }
 
-  // ANOS LETIVOS
+  static async createComunicado(comunicado: Comunicado): Promise<boolean> {
+    if (!this.isSupabaseConfigured()) return true;
+    try {
+      const { error } = await supabase.from('comunicados').insert({
+        tenant_id: comunicado.tenantId,
+        titulo: comunicado.titulo,
+        conteudo: comunicado.conteudo,
+        autor_nome: comunicado.autorNome,
+        autor_cargo: comunicado.autorCargo,
+        destinatario_role: comunicado.destinatarioRole,
+        urgente: comunicado.urgente
+      });
+      return !error;
+    } catch {
+      return false;
+    }
+  }
+
+  // ANOS LETIVOS READ & WRITE
   static async getAnosLetivos(tenantId?: string): Promise<AnoLetivo[]> {
     if (!this.isSupabaseConfigured()) {
       return tenantId ? INITIAL_ANOS_LETIVOS.filter(a => a.tenantId === tenantId) : INITIAL_ANOS_LETIVOS;
@@ -332,10 +478,27 @@ export class DbService {
         status: a.status,
         dataInicio: a.data_inicio,
         dataFim: a.data_fim,
-        turmasCount: a.turmas_count
+        turmasCount: a.turmas_count || 0
       }));
     } catch {
       return tenantId ? INITIAL_ANOS_LETIVOS.filter(a => a.tenantId === tenantId) : INITIAL_ANOS_LETIVOS;
+    }
+  }
+
+  static async createAnoLetivo(anoLetivo: AnoLetivo): Promise<boolean> {
+    if (!this.isSupabaseConfigured()) return true;
+    try {
+      const { error } = await supabase.from('anos_letivos').insert({
+        tenant_id: anoLetivo.tenantId,
+        ano: anoLetivo.ano,
+        status: anoLetivo.status,
+        data_inicio: anoLetivo.dataInicio,
+        data_fim: anoLetivo.dataFim,
+        turmas_count: anoLetivo.turmasCount
+      });
+      return !error;
+    } catch {
+      return false;
     }
   }
 }

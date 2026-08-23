@@ -46,7 +46,23 @@ export const Navbar: React.FC = () => {
             </div>
           </div>
 
+          {/* Badge Indicador do Supabase */}
+          <div className="hidden sm:flex items-center">
+            {useApp().isSupabaseConnected ? (
+              <span className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                Supabase Conectado
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                Dados Locais (Mock)
+              </span>
+            )}
+          </div>
+
           <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden md:block" />
+
 
           {/* School Selector (Tenant) */}
           <div className="relative">

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { 
   Tenant, User, Role, Aluno, Turma, Disciplina, Cobranca, 
   RegraCobranca, PresencaRegistro, NotaRegistro, Comunicado, StatusTenant, AnoLetivo 
@@ -8,6 +8,7 @@ import {
   INITIAL_DISCIPLINAS, INITIAL_COBRANCAS, INITIAL_REGRAS_COBRANCA, 
   INITIAL_NOTAS, INITIAL_PRESENCAS, INITIAL_COMUNICADOS, INITIAL_ANOS_LETIVOS 
 } from '../data/mockData';
+import { DbService } from '../services/dbService';
 
 interface AppContextType {
   // Tenant & RBAC State
@@ -29,6 +30,10 @@ interface AppContextType {
   presencas: PresencaRegistro[];
   comunicados: Comunicado[];
   anosLetivos: AnoLetivo[];
+
+  // Database Connection Status
+  isSupabaseConnected: boolean;
+  isLoadingData: boolean;
   
   // SuperAdmin Tenant Actions & Modals
   adicionarEscola: (escola: Omit<Tenant, 'id' | 'alunosCount' | 'mensalidadesTotal' | 'dataCriacao'>) => void;
@@ -91,11 +96,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [comunicados, setComunicados] = useState<Comunicado[]>(INITIAL_COMUNICADOS);
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivo[]>(INITIAL_ANOS_LETIVOS);
 
+  // Status de Conexão Supabase
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(false);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+
   // UI state
   const [selectedPixCobranca, setSelectedPixCobranca] = useState<Cobranca | null>(null);
   const [showModalCadastroEscola, setShowModalCadastroEscola] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<{ id: string; titulo: string; mensagem: string; tipo: 'SUCESSO' | 'INFO' | 'AVISO' }[]>([]);
+
+  // Efeito assíncrono para carregar dados do Supabase
+  useEffect(() => {
+    let isMounted = true;
+    async function loadSupabaseData() {
+      setIsLoadingData(true);
+      const isConfigured = DbService.isSupabaseConfigured();
+      if (isMounted) setIsSupabaseConnected(isConfigured);
+
+      try {
+        const fetchedTenants = await DbService.getTenants();
+        const fetchedUsers = await DbService.getUsers();
+        const fetchedAlunos = await DbService.getAlunos();
+        const fetchedTurmas = await DbService.getTurmas();
+        const fetchedDisciplinas = await DbService.getDisciplinas();
+        const fetchedCobrancas = await DbService.getCobrancas();
+        const fetchedRegras = await DbService.getRegrasCobranca();
+        const fetchedNotas = await DbService.getNotas();
+        const fetchedPresencas = await DbService.getPresencas();
+        const fetchedComunicados = await DbService.getComunicados();
+        const fetchedAnosLetivos = await DbService.getAnosLetivos();
+
+        if (isMounted) {
+          if (fetchedTenants.length > 0) {
+            setTenantsList(fetchedTenants);
+            setCurrentTenant(fetchedTenants[0]);
+          }
+          if (fetchedUsers.length > 0) {
+            setUsersList(fetchedUsers);
+            const diretora = fetchedUsers.find(u => u.role === 'DIRETORIA') || fetchedUsers[0];
+            setCurrentUser(diretora);
+          }
+          setAlunos(fetchedAlunos);
+          setTurmas(fetchedTurmas);
+          setDisciplinas(fetchedDisciplinas);
+          setCobrancas(fetchedCobrancas);
+          setRegrasCobranca(fetchedRegras);
+          setNotas(fetchedNotas);
+          setPresencas(fetchedPresencas);
+          setComunicados(fetchedComunicados);
+          setAnosLetivos(fetchedAnosLetivos);
+        }
+      } catch (err) {
+        console.warn('Fallback para dados locais mockados:', err);
+      } finally {
+        if (isMounted) setIsLoadingData(false);
+      }
+    }
+
+    loadSupabaseData();
+    return () => { isMounted = false; };
+  }, []);
 
   const addNotification = (titulo: string, mensagem: string, tipo: 'SUCESSO' | 'INFO' | 'AVISO' = 'SUCESSO') => {
     const id = Math.random().toString();
@@ -122,7 +183,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // SuperAdmin School CRUD Actions
-  const adicionarEscola = (escolaData: Omit<Tenant, 'id' | 'alunosCount' | 'mensalidadesTotal' | 'dataCriacao'>) => {
+  const adicionarEscola = async (escolaData: Omit<Tenant, 'id' | 'alunosCount' | 'mensalidadesTotal' | 'dataCriacao'>) => {
     const novoId = `tenant-${Date.now()}`;
     const dataCriacao = new Date().toISOString().split('T')[0];
 
@@ -136,9 +197,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setTenantsList(prev => [novaEscola, ...prev]);
     addNotification('Nova Escola Cadastrada', `Instituição "${novaEscola.nome}" cadastrada com sucesso com plano ${novaEscola.plano}!`, 'SUCESSO');
+    await DbService.createTenant(novaEscola);
   };
 
-  const atualizarEscola = (id: string, dadosAtualizados: Partial<Tenant>) => {
+  const atualizarEscola = async (id: string, dadosAtualizados: Partial<Tenant>) => {
     setTenantsList(prev => prev.map(t => {
       if (t.id === id) {
         const atualizado = { ...t, ...dadosAtualizados };
@@ -150,9 +212,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return t;
     }));
     addNotification('Dados da Escola Atualizados', `Alterações gravadas com sucesso!`, 'SUCESSO');
+    await DbService.updateTenant(id, dadosAtualizados);
   };
 
-  const alterarStatusEscola = (id: string, novoStatus: StatusTenant) => {
+  const alterarStatusEscola = async (id: string, novoStatus: StatusTenant) => {
     setTenantsList(prev => prev.map(t => {
       if (t.id === id) {
         const atualizado = { ...t, status: novoStatus };
@@ -166,10 +229,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     const avisoTipo = novoStatus === 'ATIVO' ? 'SUCESSO' : novoStatus === 'SUSPENSO' ? 'AVISO' : 'INFO';
     addNotification('Situação da Escola Alterada', `O status da instituição foi alterado para ${novoStatus}.`, avisoTipo);
+    await DbService.updateTenant(id, { status: novoStatus });
   };
 
   // Secretaria Academic Actions
-  const adicionarAnoLetivo = (anoData: Omit<AnoLetivo, 'id' | 'tenantId' | 'turmasCount'>) => {
+  const adicionarAnoLetivo = async (anoData: Omit<AnoLetivo, 'id' | 'tenantId' | 'turmasCount'>) => {
     const novoAno: AnoLetivo = {
       ...anoData,
       id: `ano-${anoData.ano}-${currentTenant.id}`,
@@ -178,6 +242,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setAnosLetivos(prev => [novoAno, ...prev]);
     addNotification('Ano Letivo Criado', `Ano Letivo ${novoAno.ano} criado com sucesso!`, 'SUCESSO');
+    await DbService.createAnoLetivo(novoAno);
   };
 
   const atualizarAnoLetivo = (id: string, anoData: Partial<AnoLetivo>) => {
@@ -188,7 +253,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addNotification('Ano Letivo Atualizado', `Alterações no Ano Letivo salvas!`, 'SUCESSO');
   };
 
-  const adicionarTurma = (turmaData: Omit<Turma, 'id' | 'tenantId' | 'alunosMatriculados'>) => {
+  const adicionarTurma = async (turmaData: Omit<Turma, 'id' | 'tenantId' | 'alunosMatriculados'>) => {
     const novaTurma: Turma = {
       ...turmaData,
       id: `turma-${Date.now()}`,
@@ -198,7 +263,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setTurmas(prev => [novaTurma, ...prev]);
 
-    // Incrementar turmasCount no Ano Letivo correspondente
     setAnosLetivos(prev => prev.map(a => {
       if (a.tenantId === currentTenant.id && a.ano === turmaData.anoLetivo) {
         return { ...a, turmasCount: a.turmasCount + 1 };
@@ -207,6 +271,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     addNotification('Nova Turma Criada', `Turma "${novaTurma.nome}" criada para o Ano Letivo ${novaTurma.anoLetivo}!`, 'SUCESSO');
+    await DbService.createTurma(novaTurma);
   };
 
   const atualizarTurma = (id: string, turmaData: Partial<Turma>) => {
@@ -268,7 +333,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const tenantProfessores = usersList.filter(u => u.tenantId === currentTenant.id && u.role === 'PROFESSOR');
 
   // Instant Webhook/Payment Simulation
-  const simularPagamentoPix = (cobrancaId: string) => {
+  const simularPagamentoPix = async (cobrancaId: string) => {
     const dataHoje = new Date().toISOString().split('T')[0];
     setCobrancas(prev => prev.map(c => {
       if (c.id === cobrancaId) {
@@ -285,7 +350,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return c;
     }));
 
-    // Recalcular métricas do Tenant
     setTenantsList(prev => prev.map(t => {
       if (t.id === currentTenant.id) {
         return { ...t, mensalidadesTotal: t.mensalidadesTotal + 780 };
@@ -294,9 +358,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     addNotification('Pagamento Confirmado (PIX Webhook)', `Mensalidade confirmada instantaneamente com baixa automática!`, 'SUCESSO');
+    await DbService.updateCobrancaStatus(cobrancaId, 'PAGO', dataHoje);
   };
 
-  // Simulate WhatsApp Automated Rules
   const dispararReguaWhatsapp = (cobrancaId: string, regraId: string) => {
     const cob = cobrancas.find(c => c.id === cobrancaId);
     const regra = regrasCobranca.find(r => r.id === regraId);
@@ -309,7 +373,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .replace('{VENCIMENTO}', cob.vencimento)
       .replace('{LINK_PIX}', `https://pix.edugestao.com/pay/${cob.id}`);
 
-    // Registra no histórico da cobrança
     const novoEnvio = {
       id: Math.random().toString(),
       data: new Date().toISOString().replace('T', ' ').substring(0, 16),
@@ -336,8 +399,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
-  // CRUD Actions
-  const adicionarAluno = (alunoData: Omit<Aluno, 'id' | 'tenantId' | 'matricula' | 'dataMatricula'>) => {
+  const adicionarAluno = async (alunoData: Omit<Aluno, 'id' | 'tenantId' | 'matricula' | 'dataMatricula'>) => {
     const novoId = `aluno-${Date.now()}`;
     const anoAtual = new Date().getFullYear();
     const matriculaGerada = `${anoAtual}-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -353,7 +415,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setAlunos(prev => [novoAluno, ...prev]);
 
-    // Incrementar alunosMatriculados na turma
     setTurmas(prev => prev.map(t => {
       if (t.id === alunoData.turmaId) {
         return { ...t, alunosMatriculados: t.alunosMatriculados + 1 };
@@ -361,7 +422,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return t;
     }));
 
-    // Gerar primeira mensalidade automaticamente
     const novaCobranca: Cobranca = {
       id: `cob-${Date.now()}`,
       tenantId: currentTenant.id,
@@ -384,7 +444,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCobrancas(prev => [novaCobranca, ...prev]);
 
-    // Atualiza contagem no tenant
     setTenantsList(prev => prev.map(t => {
       if (t.id === currentTenant.id) {
         return { ...t, alunosCount: t.alunosCount + 1 };
@@ -393,9 +452,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     addNotification('Aluno Cadastrado', `Aluno ${novoAluno.nome} matriculado com sucesso e cobrança inicial gerada!`, 'SUCESSO');
+    await DbService.createAluno(novoAluno);
   };
 
-  const salvarNotasLote = (
+  const salvarNotasLote = async (
     turmaId: string, 
     disciplinaId: string, 
     bimestre: 1 | 2 | 3 | 4, 
@@ -416,6 +476,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [...filtrados, ...novos];
     });
     addNotification('Diário de Classe', `Notas do ${bimestre}º Bimestre salvas com sucesso!`, 'SUCESSO');
+    await DbService.saveNotasBatch(currentTenant.id, turmaId, disciplinaId, bimestre, novosRegistros);
   };
 
   const salvarPresencaLote = (
@@ -459,7 +520,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
   };
 
-  const adicionarComunicado = (comunicadoData: Omit<Comunicado, 'id' | 'tenantId' | 'data' | 'lidoPorCount'>) => {
+  const adicionarComunicado = async (comunicadoData: Omit<Comunicado, 'id' | 'tenantId' | 'data' | 'lidoPorCount'>) => {
     const novo: Comunicado = {
       ...comunicadoData,
       id: `com-${Date.now()}`,
@@ -469,6 +530,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setComunicados(prev => [novo, ...prev]);
     addNotification('Novo Comunicado', `Comunicado "${novo.titulo}" publicado para ${novo.destinatarioRole}!`, 'SUCESSO');
+    await DbService.createComunicado(novo);
   };
 
   return (
@@ -490,6 +552,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         presencas: tenantPresencas,
         comunicados: tenantComunicados,
         anosLetivos: tenantAnosLetivos,
+        isSupabaseConnected,
+        isLoadingData,
         adicionarEscola,
         atualizarEscola,
         alterarStatusEscola,

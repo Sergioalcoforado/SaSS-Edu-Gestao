@@ -3,7 +3,9 @@ import { AppProvider, useApp } from './context/AppContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { PixPaymentModal } from './components/PixPaymentModal';
+import { LoginModal } from './components/LoginModal';
 import { FinanceiroDashboard } from './views/FinanceiroDashboard';
+
 import { ReguaCobrancaView } from './views/ReguaCobrancaView';
 import { SecretariaView } from './views/SecretariaView';
 import { AnosTurmasView } from './views/AnosTurmasView';
@@ -14,8 +16,9 @@ import { SuperAdminView } from './views/SuperAdminView';
 import { CheckCircle2 } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { currentUser, isDarkMode } = useApp();
+  const { currentUser, isDarkMode, showLoginModal, setShowLoginModal } = useApp();
   const [activeTab, setActiveTab] = useState<string>('financeiro');
+
 
   // Adjust active tab when role changes
   useEffect(() => {
@@ -66,6 +69,8 @@ const MainContent: React.FC = () => {
 
       {/* Global Modals */}
       <PixPaymentModal />
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
+
 
       {/* Toast Notification Container */}
       <ToastContainer />

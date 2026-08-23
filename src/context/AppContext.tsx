@@ -9,6 +9,9 @@ import {
   INITIAL_NOTAS, INITIAL_PRESENCAS, INITIAL_COMUNICADOS, INITIAL_ANOS_LETIVOS 
 } from '../data/mockData';
 import { DbService } from '../services/dbService';
+import { AuthService } from '../services/authService';
+import { supabase } from '../lib/supabase';
+
 
 interface AppContextType {
   // Tenant & RBAC State
@@ -31,11 +34,16 @@ interface AppContextType {
   comunicados: Comunicado[];
   anosLetivos: AnoLetivo[];
 
-  // Database Connection Status
+  // Database Connection & Auth Status
   isSupabaseConnected: boolean;
   isLoadingData: boolean;
+  authSession: any;
+  showLoginModal: boolean;
+  setShowLoginModal: (show: boolean) => void;
+  logout: () => Promise<void>;
   
   // SuperAdmin Tenant Actions & Modals
+
   adicionarEscola: (escola: Omit<Tenant, 'id' | 'alunosCount' | 'mensalidadesTotal' | 'dataCriacao'>) => void;
   atualizarEscola: (id: string, dadosAtualizados: Partial<Tenant>) => void;
   alterarStatusEscola: (id: string, novoStatus: StatusTenant) => void;
@@ -96,9 +104,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [comunicados, setComunicados] = useState<Comunicado[]>(INITIAL_COMUNICADOS);
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivo[]>(INITIAL_ANOS_LETIVOS);
 
-  // Status de Conexão Supabase
+  // Status de Conexão Supabase & Autenticação
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(false);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+  const [authSession, setAuthSession] = useState<any>(null);
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
   // UI state
   const [selectedPixCobranca, setSelectedPixCobranca] = useState<Cobranca | null>(null);
@@ -106,7 +116,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [notifications, setNotifications] = useState<{ id: string; titulo: string; mensagem: string; tipo: 'SUCESSO' | 'INFO' | 'AVISO' }[]>([]);
 
+  // Escutar mudanças de autenticação do Supabase Auth em tempo real
+  useEffect(() => {
+    let unsubscribe: any = null;
+
+    async function initAuthSession() {
+      if (DbService.isSupabaseConfigured()) {
+        const { data } = await supabase.auth.getSession();
+        setAuthSession(data.session);
+
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+
+          setAuthSession(session);
+          if (session?.user) {
+            const userMeta = session.user.user_metadata;
+            const updatedUser: User = {
+              id: session.user.id,
+              tenantId: userMeta?.tenant_id || currentTenant.id,
+              nome: userMeta?.nome || session.user.email?.split('@')[0] || 'Usuário Autenticado',
+              email: session.user.email || '',
+              role: userMeta?.role || 'DIRETORIA',
+              avatar: userMeta?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'
+            };
+            setCurrentUser(updatedUser);
+          }
+        });
+        unsubscribe = authListener?.subscription;
+      }
+    }
+
+    initAuthSession();
+    return () => { if (unsubscribe) unsubscribe.unsubscribe(); };
+  }, []);
+
+  const logout = async () => {
+    await AuthService.signOut();
+    setAuthSession(null);
+    addNotification('Sessão Encerrada', 'Você saiu da conta no Supabase Auth.', 'INFO');
+  };
+
   // Efeito assíncrono para carregar dados do Supabase
+
   useEffect(() => {
     let isMounted = true;
     async function loadSupabaseData() {
@@ -559,6 +609,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         anosLetivos: tenantAnosLetivos,
         isSupabaseConnected,
         isLoadingData,
+        authSession,
+        showLoginModal,
+        setShowLoginModal,
+        logout,
         adicionarEscola,
         atualizarEscola,
         alterarStatusEscola,

@@ -10,8 +10,9 @@ export const Navbar: React.FC = () => {
   const { 
     currentTenant, setCurrentTenant, tenantsList, 
     currentUser, setCurrentRole, isDarkMode, setIsDarkMode,
-    notifications 
+    notifications, authSession, setShowLoginModal, logout
   } = useApp();
+
 
   const [showTenantDropdown, setShowTenantDropdown] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
@@ -188,7 +189,7 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* User Profile Avatar */}
+          {/* User Profile Avatar & Auth Action */}
           <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200 dark:border-slate-800">
             <img 
               src={currentUser.avatar} 
@@ -197,9 +198,27 @@ export const Navbar: React.FC = () => {
             />
             <div className="hidden lg:block text-left">
               <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-[130px]">{currentUser.nome}</p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{currentUser.email}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[130px]">{currentUser.email}</p>
             </div>
+
+            {authSession ? (
+              <button
+                onClick={() => logout()}
+                className="ml-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-[11px] font-bold transition-colors"
+                title="Encerrar Sessão"
+              >
+                Sair
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="ml-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center gap-1.5"
+              >
+                <span>Entrar</span>
+              </button>
+            )}
           </div>
+
 
         </div>
       </div>

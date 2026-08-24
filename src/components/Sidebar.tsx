@@ -19,9 +19,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     switch (role) {
       case 'SUPER_ADMIN':
         return [
-          { id: 'superadmin', label: 'Painel SaaS Global', icon: Globe, badge: 'SaaS' },
-          { id: 'financeiro', label: 'Financeiro Geral', icon: DollarSign },
+          { id: 'superadmin', label: 'Painel SaaS & Arrecadação', icon: Globe, badge: 'SaaS' },
         ];
+
 
       case 'DIRETORIA':
         return [

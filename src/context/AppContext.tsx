@@ -3,6 +3,8 @@ import type {
   Tenant, User, Role, Aluno, Turma, Disciplina, Cobranca, 
   RegraCobranca, PresencaRegistro, NotaRegistro, Comunicado, StatusTenant, AnoLetivo 
 } from '../types';
+import { INITIAL_PLANS_LIST } from '../config/plans';
+import type { PlanSpec } from '../config/plans';
 import { 
   INITIAL_TENANTS, INITIAL_USERS, INITIAL_ALUNOS, INITIAL_TURMAS, 
   INITIAL_DISCIPLINAS, INITIAL_COBRANCAS, INITIAL_REGRAS_COBRANCA, 
@@ -11,7 +13,6 @@ import {
 import { DbService } from '../services/dbService';
 import { AuthService } from '../services/authService';
 import { supabase } from '../lib/supabase';
-
 
 interface AppContextType {
   // Tenant & RBAC State
@@ -22,6 +23,13 @@ interface AppContextType {
   tenantsList: Tenant[];
   usersList: User[];
   professores: User[];
+
+  // SaaS Plans CRUD State
+  plansList: PlanSpec[];
+  adicionarPlano: (plano: PlanSpec) => void;
+  atualizarPlano: (id: string, dadosPlano: Partial<PlanSpec>) => void;
+  excluirPlano: (id: string) => void;
+
   
   // Data Filtered by Active Tenant
   alunos: Aluno[];
@@ -103,6 +111,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [presencas, setPresencas] = useState<PresencaRegistro[]>(INITIAL_PRESENCAS);
   const [comunicados, setComunicados] = useState<Comunicado[]>(INITIAL_COMUNICADOS);
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivo[]>(INITIAL_ANOS_LETIVOS);
+  const [plansList, setPlansList] = useState<PlanSpec[]>(INITIAL_PLANS_LIST);
+
+  // CRUD de Planos SaaS
+  const adicionarPlano = (novoPlano: PlanSpec) => {
+    setPlansList(prev => [...prev, novoPlano]);
+    addNotification('Plano Comercial Criado', `Plano "${novoPlano.nome}" adicionado com sucesso!`, 'SUCESSO');
+  };
+
+  const atualizarPlano = (id: string, dadosPlano: Partial<PlanSpec>) => {
+    setPlansList(prev => prev.map(p => p.id === id ? { ...p, ...dadosPlano } : p));
+    addNotification('Plano Comercial Atualizado', `Especificações do plano salvas!`, 'SUCESSO');
+  };
+
+  const excluirPlano = (id: string) => {
+    // Verificar se há escolas ativas vinculadas a este plano
+    const escolasVinculadas = tenantsList.filter(t => t.plano === id);
+    if (escolasVinculadas.length > 0) {
+      addNotification('Impossível Excluir', `Existem ${escolasVinculadas.length} escolas usando o plano "${id}". Altere o plano delas primeiro.`, 'AVISO');
+      return;
+    }
+    setPlansList(prev => prev.filter(p => p.id !== id));
+    addNotification('Plano Removido', `Plano comercial removido com sucesso.`, 'INFO');
+  };
+
 
   // Status de Conexão Supabase & Autenticação
   const [isSupabaseConnected, setIsSupabaseConnected] = useState<boolean>(false);
@@ -597,6 +629,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCurrentRole,
         tenantsList,
         usersList,
+        plansList,
+        adicionarPlano,
+        atualizarPlano,
+        excluirPlano,
         professores: tenantProfessores,
         alunos: tenantAlunos,
         turmas: tenantTurmas,

@@ -154,7 +154,11 @@ export interface NotaRegistro {
   bimestre: 1 | 2 | 3 | 4;
   nota: number; // 0.0 - 10.0
   faltasTotais: number;
+  av1?: number;
+  av2?: number;
+  atividades?: number;
 }
+
 
 export interface Comunicado {
   id: string;

@@ -1,7 +1,10 @@
 -- ============================================================================
--- EDUGESTÃO SAAS - SCRIPT SQL SEED CORRIGIDO (UUIDs VÁLIDOS)
+-- EDUGESTÃO SAAS - SCRIPT SQL SEED CORRIGIDO (REMOÇÃO DE FK AUTH.USERS)
 -- Data: 2026-08-25
 -- ============================================================================
+
+-- Remover restrição de FK em public.users para permitir dados de demonstração
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_id_fkey;
 
 -- 1. TENANTS (Escolas Clientes)
 INSERT INTO public.tenants (

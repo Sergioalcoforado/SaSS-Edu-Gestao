@@ -36,6 +36,7 @@ export const INITIAL_TENANTS: Tenant[] = [
     emailContato: 'contato@futurosaber.com.br',
     telefoneContato: '(11) 98765-4321',
     dataCriacao: '2025-02-15',
+    dataInicioPrestacaoServico: '2025-02-15',
     limiteAlunos: 600,
     valorMensalidadePlano: 990
   },
@@ -53,6 +54,7 @@ export const INITIAL_TENANTS: Tenant[] = [
     emailContato: 'secretaria@aprendiz.com.br',
     telefoneContato: '(21) 97654-3210',
     dataCriacao: '2025-06-10',
+    dataInicioPrestacaoServico: '2025-06-10',
     limiteAlunos: 250,
     valorMensalidadePlano: 490
   }

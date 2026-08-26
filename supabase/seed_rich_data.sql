@@ -7,14 +7,17 @@
 ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_id_fkey;
 
 -- 1. TENANTS (Escolas Clientes)
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS data_inicio_prestacao_servico DATE DEFAULT CURRENT_DATE;
+
 INSERT INTO public.tenants (
-  id, nome, cnpj, subdominio, logo, plano, status, alunos_count, mensalidades_total, cor_primaria, email_contato, telefone_contato, limite_alunos, valor_mensalidade_plano
+  id, nome, cnpj, subdominio, logo, plano, status, alunos_count, mensalidades_total, cor_primaria, email_contato, telefone_contato, limite_alunos, valor_mensalidade_plano, data_inicio_prestacao_servico
 ) VALUES 
-('11111111-1111-4111-a111-111111111111', 'Colégio Futuro Saber', '12.345.678/0001-90', 'futurosaber', 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=150', 'PRO', 'ATIVO', 15, 14850.00, '#4F46E5', 'contato@futurosaber.com.br', '(11) 98765-4321', 600, 990.00),
-('22222222-2222-4222-a222-222222222222', 'Escola Aprendiz do Amanhã', '98.765.432/0001-10', 'aprendiz', 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=150', 'BASIC', 'ATIVO', 15, 7350.00, '#059669', 'secretaria@aprendiz.com.br', '(21) 97654-3210', 250, 490.00)
+('11111111-1111-4111-a111-111111111111', 'Colégio Futuro Saber', '12.345.678/0001-90', 'futurosaber', 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=150', 'PRO', 'ATIVO', 15, 14850.00, '#4F46E5', 'contato@futurosaber.com.br', '(11) 98765-4321', 600, 990.00, '2025-02-15'),
+('22222222-2222-4222-a222-222222222222', 'Escola Aprendiz do Amanhã', '98.765.432/0001-10', 'aprendiz', 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=150', 'BASIC', 'ATIVO', 15, 7350.00, '#059669', 'secretaria@aprendiz.com.br', '(21) 97654-3210', 250, 490.00, '2025-06-10')
 ON CONFLICT (id) DO UPDATE SET 
   nome = EXCLUDED.nome,
-  alunos_count = EXCLUDED.alunos_count;
+  alunos_count = EXCLUDED.alunos_count,
+  data_inicio_prestacao_servico = EXCLUDED.data_inicio_prestacao_servico;
 
 -- 2. USUÁRIOS (Direção e 3 Professores por Escola)
 INSERT INTO public.users (

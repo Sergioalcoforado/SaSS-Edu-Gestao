@@ -5,7 +5,7 @@ import type { PlanSpec } from '../config/plans';
 import { 
   Globe, Building2, Users, Plus, Search, 
   Edit3, Phone, Mail, X, Sparkles, CheckCircle2, Layers,
-  Trash2, Copy, Check, DollarSign, QrCode, MessageSquare
+  Trash2, Copy, Check, DollarSign, QrCode, MessageSquare, Calendar
 } from 'lucide-react';
 
 
@@ -99,6 +99,7 @@ export const SuperAdminView: React.FC = () => {
   const [status, setStatus] = useState<StatusTenant>('ATIVO');
   const [emailContato, setEmailContato] = useState('');
   const [telefoneContato, setTelefoneContato] = useState('');
+  const [dataInicioPrestacaoServico, setDataInicioPrestacaoServico] = useState('');
   const [limiteAlunos, setLimiteAlunos] = useState(500);
   const [logo, setLogo] = useState('');
   const [corPrimaria, setCorPrimaria] = useState('#4f46e5');
@@ -153,6 +154,7 @@ export const SuperAdminView: React.FC = () => {
     setStatus('ATIVO');
     setEmailContato('');
     setTelefoneContato('');
+    setDataInicioPrestacaoServico(new Date().toISOString().split('T')[0]);
     setLimiteAlunos(plansList[0]?.limiteAlunos || 500);
     setLogo('https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=150&auto=format&fit=crop&q=80');
     setCorPrimaria('#4f46e5');
@@ -168,6 +170,7 @@ export const SuperAdminView: React.FC = () => {
     setStatus(tenant.status);
     setEmailContato(tenant.emailContato);
     setTelefoneContato(tenant.telefoneContato);
+    setDataInicioPrestacaoServico(tenant.dataInicioPrestacaoServico || tenant.dataCriacao || new Date().toISOString().split('T')[0]);
     setLimiteAlunos(tenant.limiteAlunos);
     setLogo(tenant.logo);
     setCorPrimaria(tenant.corPrimaria);
@@ -178,6 +181,7 @@ export const SuperAdminView: React.FC = () => {
     if (!nome || !cnpj) return;
 
     const planSpec = plansList.find(p => p.id === plano) || plansList[0];
+    const dataInicioFinal = dataInicioPrestacaoServico || new Date().toISOString().split('T')[0];
 
     adicionarEscola({
       nome,
@@ -189,6 +193,7 @@ export const SuperAdminView: React.FC = () => {
       corPrimaria,
       emailContato: emailContato || `contato@${subdominio}`,
       telefoneContato: telefoneContato || '(11) 98888-0000',
+      dataInicioPrestacaoServico: dataInicioFinal,
       limiteAlunos: limiteAlunos || planSpec.limiteAlunos,
       valorMensalidadePlano: planSpec.precoMensal
     });
@@ -217,6 +222,7 @@ export const SuperAdminView: React.FC = () => {
     if (!editingTenant) return;
 
     const planSpec = plansList.find(p => p.id === plano) || plansList[0];
+    const dataInicioFinal = dataInicioPrestacaoServico || editingTenant.dataInicioPrestacaoServico || new Date().toISOString().split('T')[0];
 
     atualizarEscola(editingTenant.id, {
       nome,
@@ -226,6 +232,7 @@ export const SuperAdminView: React.FC = () => {
       status,
       emailContato,
       telefoneContato,
+      dataInicioPrestacaoServico: dataInicioFinal,
       limiteAlunos: limiteAlunos || planSpec.limiteAlunos,
       logo,
       corPrimaria,
@@ -594,15 +601,19 @@ export const SuperAdminView: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Contact */}
+                        {/* Contact & Service Start Date */}
                         <td className="p-4">
                           <p className="text-slate-700 dark:text-slate-300 flex items-center gap-1">
                             <Mail className="w-3 h-3 text-slate-400" />
                             <span>{tenant.emailContato}</span>
                           </p>
                           <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                            <Phone className="w-3 h-3" />
+                            <Phone className="w-3 h-3 text-slate-400" />
                             <span>{tenant.telefoneContato}</span>
+                          </p>
+                          <p className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold flex items-center gap-1 mt-1 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-md w-fit">
+                            <Calendar className="w-3 h-3 text-purple-500" />
+                            <span>Início: {tenant.dataInicioPrestacaoServico || tenant.dataCriacao}</span>
                           </p>
                         </td>
 
@@ -1174,13 +1185,16 @@ export const SuperAdminView: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">E-mail de Contato da Direção</label>
+                  <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-1">
+                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Data de Início da Prestação de Serviço</span>
+                  </label>
                   <input 
-                    type="email"
-                    placeholder="diretoria@escola.com.br"
-                    value={emailContato}
-                    onChange={(e) => setEmailContato(e.target.value)}
-                    className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200"
+                    type="date"
+                    required
+                    value={dataInicioPrestacaoServico}
+                    onChange={(e) => setDataInicioPrestacaoServico(e.target.value)}
+                    className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 font-semibold"
                   />
                 </div>
 
@@ -1194,6 +1208,17 @@ export const SuperAdminView: React.FC = () => {
                     className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">E-mail de Contato da Direção</label>
+                <input 
+                  type="email"
+                  placeholder="diretoria@escola.com.br"
+                  value={emailContato}
+                  onChange={(e) => setEmailContato(e.target.value)}
+                  className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1327,12 +1352,16 @@ export const SuperAdminView: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">E-mail Contato</label>
+                  <label className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-1">
+                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Data de Início da Prestação de Serviço</span>
+                  </label>
                   <input 
-                    type="email"
-                    value={emailContato}
-                    onChange={(e) => setEmailContato(e.target.value)}
-                    className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200"
+                    type="date"
+                    required
+                    value={dataInicioPrestacaoServico}
+                    onChange={(e) => setDataInicioPrestacaoServico(e.target.value)}
+                    className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 font-semibold"
                   />
                 </div>
 
@@ -1345,6 +1374,16 @@ export const SuperAdminView: React.FC = () => {
                     className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">E-mail Contato</label>
+                <input 
+                  type="email"
+                  value={emailContato}
+                  onChange={(e) => setEmailContato(e.target.value)}
+                  className="w-full p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

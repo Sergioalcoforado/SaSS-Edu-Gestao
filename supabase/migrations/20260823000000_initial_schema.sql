@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS public.tenants (
   email_contato TEXT,
   telefone_contato TEXT,
   data_criacao TIMESTAMPTZ DEFAULT now(),
+  data_inicio_prestacao_servico DATE DEFAULT CURRENT_DATE,
   limite_alunos INTEGER DEFAULT 600,
   valor_mensalidade_plano NUMERIC(10, 2) DEFAULT 990.00
 );

@@ -28,6 +28,7 @@ export interface Tenant {
   emailContato: string;
   telefoneContato: string;
   dataCriacao: string;
+  dataInicioPrestacaoServico?: string;
   limiteAlunos: number;
   valorMensalidadePlano: number;
 }
